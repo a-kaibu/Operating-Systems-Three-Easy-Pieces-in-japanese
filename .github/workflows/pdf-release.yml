@@ -58,7 +58,6 @@ jobs:
             --metadata title="Operating Systems: Three Easy Pieces 日本語翻訳" \
             --toc \
             --toc-depth=2 \
-            --number-sections \
             --variable documentclass=ltjsarticle \
             --variable classoption=a4paper \
             --variable geometry=margin=25mm \
