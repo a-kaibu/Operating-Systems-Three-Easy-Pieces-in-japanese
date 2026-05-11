@@ -1,0 +1,78 @@
+name: Build PDF Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Release tag to create or update
+        required: true
+        default: pdf-latest
+      release_name:
+        description: Release title
+        required: true
+        default: Latest PDF
+      prerelease:
+        description: Mark the release as a prerelease
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and publish PDF
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Pandoc and TeX
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            fonts-noto-cjk \
+            pandoc \
+            texlive-fonts-recommended \
+            texlive-lang-japanese \
+            texlive-latex-extra \
+            texlive-luatex
+
+      - name: Build PDF
+        run: |
+          set -euo pipefail
+
+          mapfile -t chapter_files < <(find . -mindepth 2 -maxdepth 2 -type f -name '*.md' | sort)
+          resource_dirs=()
+          for dir in [0-9][0-9]; do
+            [[ -d "$dir" ]] && resource_dirs+=("$dir")
+          done
+          resource_path=".:$(IFS=:; echo "${resource_dirs[*]}")"
+
+          pandoc README.md "${chapter_files[@]}" \
+            --from=gfm \
+            --pdf-engine=lualatex \
+            --resource-path="$resource_path" \
+            --metadata title="Operating Systems: Three Easy Pieces 日本語翻訳" \
+            --toc \
+            --toc-depth=2 \
+            --number-sections \
+            --variable documentclass=ltjsarticle \
+            --variable classoption=a4paper \
+            --variable geometry=margin=25mm \
+            --variable mainfont="Noto Serif CJK JP" \
+            --variable sansfont="Noto Sans CJK JP" \
+            --variable monofont="Noto Sans Mono CJK JP" \
+            --output ostep-ja.pdf
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag_name }}
+          name: ${{ inputs.release_name }}
+          prerelease: ${{ inputs.prerelease }}
+          files: ostep-ja.pdf
+          fail_on_unmatched_files: true
+          overwrite_files: true
